@@ -1,0 +1,98 @@
+name: Run Tests Only
+
+on:
+  workflow_dispatch:
+    inputs:
+      browser:
+        description: 'Browser to use'
+        required: true
+        default: 'chrome'
+        type: choice
+        options:
+          - chrome
+          - firefox
+      tags:
+        description: 'Cucumber tags to run'
+        required: false
+        default: ''
+      headless:
+        description: 'Run in headless mode'
+        required: true
+        default: 'true'
+        type: boolean
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: 'stable'
+
+      - name: Setup Xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libxss1 libappindicator1 libindicator7
+
+      - name: Grant execute permission
+        run: chmod +x gradlew
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Run tests
+        run: |
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+          sleep 3
+          
+          if [ -z "${{ github.event.inputs.tags }}" ]; then
+            ./gradlew clean test --info \
+              -Dbrowser=${{ github.event.inputs.browser }} \
+              -Dheadless=${{ github.event.inputs.headless }}
+          else
+            ./gradlew clean test --info \
+              -Dbrowser=${{ github.event.inputs.browser }} \
+              -Dheadless=${{ github.event.inputs.headless }} \
+              -Dcucumber.filter.tags="${{ github.event.inputs.tags }}"
+          fi
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-reports
+          path: |
+            build/reports/
+            build/test-results/
+            build/screenshots/
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## Test Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Browser:** ${{ github.event.inputs.browser }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Headless:** ${{ github.event.inputs.headless }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:** ${{ github.event.inputs.tags || 'All' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Reports available as artifacts." >> $GITHUB_STEP_SUMMARY

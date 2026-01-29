@@ -1,0 +1,40 @@
+repository:
+  name: prueba-automatizacion
+  description: Proyecto de automatización de pruebas con Selenium, Cucumber y Docker
+  topics: automation, selenium, cucumber, docker, kubernetes, github-actions
+
+labels:
+  - name: bug
+    color: d73a4a
+    description: Something isn't working
+  - name: enhancement
+    color: a2eeef
+    description: New feature or request
+  - name: documentation
+    color: 0075ca
+    description: Improvements or additions to documentation
+  - name: test
+    color: 00FF00
+    description: Related to testing
+  - name: docker
+    color: 2496ED
+    description: Docker related
+  - name: kubernetes
+    color: 326CE5
+    description: Kubernetes related
+  - name: ci-cd
+    color: 2088FF
+    description: CI/CD pipeline related
+
+branches:
+  - name: main
+    protection:
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+      required_status_checks:
+        contexts:
+          - test
+          - docker-build
+        strict: true
+      enforce_admins: false
+      restrictions: null
