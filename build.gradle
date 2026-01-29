@@ -1,0 +1,84 @@
+plugins {
+    id 'java'
+    id 'idea'
+}
+
+group = 'com.qanova'
+version = '1.0-SNAPSHOT'
+
+// especificamos la version de Java
+sourceCompatibility = JavaVersion.VERSION_17
+targetCompatibility = JavaVersion.VERSION_17
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // JUnit 4 para Cucumber
+    testImplementation 'junit:junit:4.13.2'
+
+    // Cucumber
+    testImplementation 'io.cucumber:cucumber-java:7.15.0'
+    testImplementation 'io.cucumber:cucumber-junit:7.15.0'
+
+    // Selenium BOM para manejar versiones automáticamente
+    implementation platform('org.seleniumhq.selenium:selenium-bom:4.16.1')
+
+    // Selenium sin especificar versión (usará la del BOM)
+    implementation 'org.seleniumhq.selenium:selenium-java'
+
+    // WebDriverManager
+    implementation 'io.github.bonigarcia:webdrivermanager:5.7.0'
+
+    // Aserciones
+    testImplementation 'org.assertj:assertj-core:3.25.1'
+}
+
+test {
+    useJUnit()
+
+    systemProperty 'cucumber.filter.tags', System.getProperty('cucumber.filter.tags', '')
+
+    // Configurar reporting
+    testLogging {
+        events 'passed', 'skipped', 'failed', 'standard_out', 'standard_error'
+        showStandardStreams = true
+        showExceptions = true
+        exceptionFormat = 'full'
+    }
+
+    // Asegurar ejecución
+    outputs.upToDateWhen { false }
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+// Tarea específica para Cucumber
+task cucumber(type: Test) {
+    description = 'Ejecuta pruebas de Cucumber'
+    group = 'verification'
+
+    useJUnit()
+
+    // Incluir solo el runner de Cucumber
+    include '**/TestRunner.class'
+
+    // Pasar todas las propiedades del sistema
+    systemProperties System.getProperties()
+
+    // Configurar logging
+    testLogging {
+        events 'passed', 'skipped', 'failed', 'standard_out', 'standard_error'
+        showStandardStreams = true
+    }
+}
+
+// Tarea para limpiar reportes
+task cleanReports(type: Delete) {
+    delete 'build/reports', 'build/test-results'
+}
+
+clean.dependsOn cleanReports
