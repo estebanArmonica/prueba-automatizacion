@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: qanova-tests
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qanova-tests
+  namespace: qanova-tests
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qanova-tests
+  template:
+    metadata:
+      labels:
+        app: qanova-tests
+    spec:
+      containers:
+        - name: qanova-tests
+          image: qanova/tests:latest
+          env:
+            - name: BROWSER
+              value: "chrome"
+            - name: HEADLESS
+              value: "true"
+            - name: BASE_URL
+              value: "https://www.google.com"
+            - name: JAVA_OPTS
+              value: "-Xmx512m -Xms256m"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          volumeMounts:
+            - name: reports
+              mountPath: /app/build/reports
+            - name: screenshots
+              mountPath: /app/build/screenshots
+      volumes:
+        - name: reports
+          emptyDir: {}
+        - name: screenshots
+          emptyDir: {}
+      restartPolicy: Always
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: qanova-tests-scheduled
+  namespace: qanova-tests
+spec:
+  schedule: "0 8 * * *"  # Ejecutar todos los días a las 8 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: qanova-tests
+              image: qanova/tests:latest
+              imagePullPolicy: Always
+              env:
+                - name: BROWSER
+                  value: "chrome"
+                - name: HEADLESS
+                  value: "true"
+              command: ["./gradlew"]
+              args: ["test", "--info"]
+          restartPolicy: OnFailure
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-reports-pvc
+  namespace: qanova-tests
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
